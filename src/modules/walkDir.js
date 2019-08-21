@@ -9,12 +9,12 @@
  * @param  {string[]} extFilter
  * @param  {number} limit
  * @param  {number} depth
- * @returns {Promise<DirNode>}
+ * @returns {Promise<DirNode[]>}
  */
 export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
   if (depth > limit) {
     // throw new Error("OverLimitError");
-    return new DirNode(null, "OverLimitDepthError", null, null, null, null);
+    return [new DirNode(null, "OverLimitDepthError", null, null, null, null)];
   }
 
   let blob;
@@ -24,40 +24,31 @@ export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
     blob = await res.blob();
   } catch (e) {
     // throw e;
-    return new DirNode(null, e, null, null, null, null);
+    return [new DirNode(null, e, null, null, null, null)];
   }
 
   if (blob.type !== "application/http-index-format") {
-    return new DirNode(null, "NotDirectoryError", null, null, null, null);
+    // throw new Error("NotDirectoryError");
+    return [new DirNode(null, "NotDirectoryError", null, null, null, null)];
   }
 
   const reader = new FileReader();
 
   return new Promise(resolve => {
     reader.onload = async () => {
-      const resultArray = String(reader.result).split("\n");
-
       /**
-       *
-       * @param {string} info
-       * @returns {string[]}
+       * @type {string[]}
        */
-      const splitInfo = info =>
-        info.split(" ").map(data => decodeURIComponent(data));
-
-      const parent = resultArray.slice(0, 1)[0];
-      const parentNode = new DirNode(...splitInfo(parent));
-
-      const children = resultArray.slice(2, -1);
-      const childNodes = await Promise.all(
-        children
-          .map(info => splitInfo(info))
+      const readerResultArr = reader.result.split("\n").slice(2, -1);
+      const nodes = await Promise.all(
+        readerResultArr
+          .map(info => info.split(" ").map(data => decodeURIComponent(data)))
           .map(infoArr => new DirNode(...infoArr.slice(0, -1), depth))
           .filter(createExtFilter(extFilter))
           .map(async node => {
             // require-atomic-updates 回避
             const tmpNode = node;
-            if (tmpNode.fileType === "DIRECTORY") {
+            if (tmpNode.isDirectory) {
               tmpNode.children = await walkDir(
                 `${path}\\${tmpNode.filename}`,
                 extFilter,
@@ -69,14 +60,11 @@ export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
           })
       );
 
-      if (childNodes.length == 0) {
-        parentNode.children = [
-          new DirNode(null, "NoFileError", null, null, null, null)
-        ];
+      if (nodes.length == 0) {
+        resolve([new DirNode(null, "NoFileError", null, null, null, null)]);
       }
 
-      parentNode.children = childNodes;
-      resolve(parentNode);
+      resolve(nodes);
     };
 
     reader.readAsText(blob);
@@ -104,27 +92,14 @@ export class DirNode {
      * @type {DirNode[]}
      */
     this.children = [];
-  }
 
-  /**
-   * @returns {string}
-   */
-  getFilenamesDeeply() {
-    if (this.fileType !== "DIRECTORY") {
-      return this.filename;
+    /**
+     * @type {boolean}
+     */
+    this.isDirectory = null;
+    if (this.fileType !== null) {
+      this.isDirectory = this.fileType === "DIRECTORY";
     }
-
-    const dirName = `[ ${this.filename} ]`;
-    if (this.children.length === 0) {
-      return dirName;
-    }
-
-    return (
-      dirName +
-      this.children
-        .map(node => `\n ${" ".repeat(node.depth)}${node.getFilenamesDeeply()}`)
-        .reduce((accumulator, currentValue) => accumulator + currentValue)
-    );
   }
 }
 
@@ -138,7 +113,7 @@ const createExtFilter = exts => {
    * @returns {boolean}
    */
   const innerFunc = node => {
-    if (node.fileType === "DIRECTORY") {
+    if (node.isDirectory) {
       // フォルダの場合は通す
       return true;
     }
@@ -197,7 +172,7 @@ const createUl = dirNodes => {
 
   dirNodes.forEach(node => {
     const li = document.createElement("li");
-    if (node.fileType === "DIRECTORY") {
+    if (node.isDirectory) {
       appendDirectory(li, node);
     } else {
       li.textContent = node.filename;
@@ -272,38 +247,4 @@ export const addFileOpener = (div, resultTextarea, rootPath) => {
       resultTextarea.value = result;
     };
   });
-};
-
-/**
- *@param {HTMLElement} node
- *@returns {string|boolean}
- */
-const getParentDirNodeElm = node => {
-  if (!(node instanceof HTMLLIElement) && node.tagName !== "SUMMARY") {
-    return false;
-  }
-
-  const ul = node.parentElement;
-  if (!(ul instanceof HTMLUListElement)) return false;
-
-  try {
-    const details = ul.parentElement;
-    if (!(details instanceof HTMLDetailsElement)) return false;
-    const summary = details.firstChild;
-    const parentDir = summary.textContent;
-    if (parentDir === "") {
-      return false;
-    }
-    return parentDir;
-  } catch (e) {
-    return false;
-  }
-};
-
-/**
- *
- * @param {HTMLLIElement} li
- */
-const getRelativePath = li => {
-  const filename = li.textContent;
 };

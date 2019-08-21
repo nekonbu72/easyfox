@@ -7,7 +7,7 @@
     <p></p>
     <div class="wrapper">
       <div class="split" id="left">
-        <div class="tree"></div>
+        <DirTree class="tree" :node="node" />
       </div>
       <div class="split" id="right">
         <textarea></textarea>
@@ -17,15 +17,22 @@
 </template>
 
 <script>
+//@ts-check
+
+import DirTree from "./components/DirTree.vue";
 import { mySplit } from "./modules/mySplit";
-import { walkDir } from "./modules/walkDir";
+import { walkDir, DirNode } from "./modules/walkDir";
 
 export default {
   name: "app",
+  components: {
+    DirTree
+  },
   data() {
     return {
-      dir: "C:\\Users\\Tomoyuki Nakamura\\developer\\javascript\\easyfox",
-      status: "Waiting..."
+      dir: "C:\\easyfox_test",
+      status: "Waiting...",
+      node: new DirNode()
     };
   },
   computed: {
@@ -45,12 +52,16 @@ export default {
       const timer1 = new Date();
       this.status = "Loading...";
 
-      console.log(this.url);
-      walkDir(this.url, this.ext).then(nodes => console.log(nodes));
+      walkDir(this.url, this.ext).then(nodes => {
+        console.log(nodes);
 
-      // タイマーストップ
-      const timer2 = new Date();
-      this.status = `Done(${(timer2.getTime() - timer1.getTime()) / 1000}s).`;
+        const rootDir = new DirNode("", this.url, "", "", "", -1);
+        rootDir.children = nodes;
+        this.node = rootDir;
+        // タイマーストップ
+        const timer2 = new Date();
+        this.status = `Done(${(timer2.getTime() - timer1.getTime()) / 1000}s).`;
+      });
     }
   }
 };
