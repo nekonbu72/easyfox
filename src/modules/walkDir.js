@@ -1,20 +1,22 @@
 //@ts-check
 "use strict";
 
+import Path from "path";
+
 // https://stackoverflow.com/questions/42108782/firefox-webextensions-get-local-files-content-by-path
 // https://codepen.io/Anveio/pen/XzYBzX
 
 /**
- * @param  {string} path
- * @param  {string[]} extFilter
- * @param  {number} limit
- * @param  {number} depth
+ * @param   {string} path
+ * @param   {string[]} extFilter
+ * @param   {number} limit
+ * @param   {number} depth
  * @returns {Promise<DirNode[]>}
  */
 export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
   if (depth > limit) {
     // throw new Error("OverLimitError");
-    return [new DirNode(null, "OverLimitDepthError", null, null, null, null)];
+    return [newErrorDirNode("OverLimitError")];
   }
 
   let blob;
@@ -24,12 +26,12 @@ export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
     blob = await res.blob();
   } catch (e) {
     // throw e;
-    return [new DirNode(null, e, null, null, null, null)];
+    return [newErrorDirNode(e)];
   }
 
   if (blob.type !== "application/http-index-format") {
     // throw new Error("NotDirectoryError");
-    return [new DirNode(null, "NotDirectoryError", null, null, null, null)];
+    return [newErrorDirNode("NotDirectoryError")];
   }
 
   const reader = new FileReader();
@@ -43,14 +45,14 @@ export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
       const nodes = await Promise.all(
         readerResultArr
           .map(info => info.split(" ").map(data => decodeURIComponent(data)))
-          .map(infoArr => new DirNode(...infoArr.slice(0, -1), depth))
+          .map(infoArr => new DirNode(...infoArr.slice(0, -1), depth, path))
           .filter(createExtFilter(extFilter))
           .map(async node => {
             // require-atomic-updates 回避
             const tmpNode = node;
             if (tmpNode.isDirectory) {
               tmpNode.children = await walkDir(
-                `${path}\\${tmpNode.filename}`,
+                tmpNode.path,
                 extFilter,
                 limit,
                 depth + 1
@@ -61,7 +63,7 @@ export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
       );
 
       if (nodes.length == 0) {
-        resolve([new DirNode(null, "NoFileError", null, null, null, null)]);
+        resolve([newErrorDirNode("NoFileError")]);
       }
 
       resolve(nodes);
@@ -79,14 +81,24 @@ export class DirNode {
    * @param  {string} lastModified
    * @param  {string} fileType
    * @param  {number} depth
+   * @param  {string} parentPath
    */
-  constructor(status, filename, contentLength, lastModified, fileType, depth) {
+  constructor(
+    status,
+    filename,
+    contentLength,
+    lastModified,
+    fileType,
+    depth,
+    parentPath
+  ) {
     this.status = status;
     this.filename = filename;
     this.contentLength = contentLength;
     this.lastModified = lastModified;
     this.fileType = fileType;
     this.depth = depth;
+    this.parentPath = parentPath;
 
     /**
      * @type {DirNode[]}
@@ -100,8 +112,25 @@ export class DirNode {
     if (this.fileType !== null) {
       this.isDirectory = this.fileType === "DIRECTORY";
     }
+
+    /**
+     * @type {string}
+     */
+    this.path = null;
+    if (this.filename && this.parentPath) {
+      this.path = Path.join(parentPath, filename);
+    }
   }
 }
+
+/**
+ *
+ * @param {string} message
+ * @returns {DirNode}
+ */
+const newErrorDirNode = message => {
+  return new DirNode(null, message, null, null, null, null, null);
+};
 
 /**
  * @param {string[]} exts

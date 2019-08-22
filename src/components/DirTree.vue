@@ -1,40 +1,52 @@
 <template>
   <ul>
-    <li v-for="(child, index) in directries" :key="index">{{ child.filename }}</li>
-    <li v-for="(child, index) in files" :key="index">{{ child.filename }}</li>
+    <li v-for="(dir, index) in directories" :key="`first-${index}`">
+      <details>
+        <summary tabindex="0">{{ dir.filename }}</summary>
+        <DirTree :nodes="dir.children" />
+      </details>
+    </li>
+    <li tabindex="0" v-for="(file, index) in files" :key="`second-${index}`">{{ file.filename }}</li>
   </ul>
 </template>
 
 <script>
-import { DirNode } from "../modules/walkDir";
-
 export default {
   name: "DirTree",
   props: {
-    node: DirNode
+    nodes: Array
   },
   computed: {
-    /**
-     * @returns {DirNode[]}
-     */
     files() {
-      return this.node.children.filter(childNode => {
-        return !childNode.isDirectory;
+      return this.nodes.filter(node => {
+        return !node.isDirectory;
       });
     },
-    /**
-     * @returns {DirNode[]}
-     */
-
-    directries() {
-      return this.node.children.filter(childNode => {
-        return childNode.isDirectory;
+    directories() {
+      return this.nodes.filter(node => {
+        return node.isDirectory;
       });
     }
   }
 };
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+summary {
+  font-weight: bolder;
+}
+
+ul {
+  list-style-type: none;
+  padding-left: 10px;
+}
+
+li {
+  white-space: nowrap;
+}
+
+li:focus,
+summary:focus {
+  background-color: lightcyan;
+}
 </style>

@@ -1,13 +1,13 @@
 <template>
   <form v-on:submit.prevent="updateDirTree">
-    <label>file:///</label>
+    <label>file:/</label>
     <input class="dir" type="text" v-model="dir" required />
     <input type="submit" value="->" />
     <label>{{status}}</label>
     <p></p>
     <div class="wrapper">
       <div class="split" id="left">
-        <DirTree class="tree" :node="node" />
+        <DirTree class="tree" :nodes="nodes" />
       </div>
       <div class="split" id="right">
         <textarea></textarea>
@@ -22,6 +22,7 @@
 import DirTree from "./components/DirTree.vue";
 import { mySplit } from "./modules/mySplit";
 import { walkDir, DirNode } from "./modules/walkDir";
+import Path from "path";
 
 export default {
   name: "app",
@@ -32,7 +33,7 @@ export default {
     return {
       dir: "C:\\easyfox_test",
       status: "Waiting...",
-      node: new DirNode()
+      nodes: [new DirNode()]
     };
   },
   computed: {
@@ -40,7 +41,7 @@ export default {
       return ["js", "txt", "iim"];
     },
     url() {
-      return `file:///${this.dir}`;
+      return Path.join("file:", this.dir);
     }
   },
   mounted() {
@@ -53,11 +54,8 @@ export default {
       this.status = "Loading...";
 
       walkDir(this.url, this.ext).then(nodes => {
-        console.log(nodes);
+        this.nodes = nodes;
 
-        const rootDir = new DirNode("", this.url, "", "", "", -1);
-        rootDir.children = nodes;
-        this.node = rootDir;
         // タイマーストップ
         const timer2 = new Date();
         this.status = `Done(${(timer2.getTime() - timer1.getTime()) / 1000}s).`;
