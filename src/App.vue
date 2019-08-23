@@ -10,7 +10,7 @@
         <DirTree class="tree" :nodes="nodes" />
       </div>
       <div class="split" id="right">
-        <textarea></textarea>
+        <textarea>Hello</textarea>
       </div>
     </div>
   </form>
