@@ -7,10 +7,11 @@
     <p></p>
     <div class="wrapper">
       <div class="split" id="left">
-        <DirTree class="tree" :nodes="nodes" />
+        <span class="closer" tabindex="0" @click="closeAllDetails" @keyup="closeAllDetails">[-]</span>
+        <DirTree class="tree" :nodes="nodes" :editor="editor" />
       </div>
       <div class="split" id="right">
-        <textarea>Hello</textarea>
+        <div id="container"></div>
       </div>
     </div>
   </form>
@@ -23,6 +24,7 @@ import DirTree from "./components/DirTree.vue";
 import { mySplit } from "./modules/mySplit";
 import { walkDir, DirNode } from "./modules/walkDir";
 import Path from "path";
+import * as monaco from "monaco-editor";
 
 export default {
   name: "app",
@@ -33,7 +35,11 @@ export default {
     return {
       dir: "C:\\easyfox_test",
       status: "Waiting...",
-      nodes: [new DirNode()]
+      nodes: [new DirNode()],
+      /**
+       * @type {monaco.editor.IStandaloneCodeEditor}
+       */
+      editor: {}
     };
   },
   computed: {
@@ -45,7 +51,17 @@ export default {
     }
   },
   mounted() {
-    mySplit(this.$el, "div#left", "div#right");
+    const split = mySplit(this.$el, "div#left", "div#right");
+
+    this.editor = monaco.editor.create(document.getElementById("container"), {
+      language: "javascript",
+      minimap: { enabled: false }
+    });
+    window.onresize = () => {
+      this.editor.layout();
+    };
+
+    this.updateDirTree();
   },
   methods: {
     updateDirTree() {
@@ -60,6 +76,12 @@ export default {
         const timer2 = new Date();
         this.status = `Done(${(timer2.getTime() - timer1.getTime()) / 1000}s).`;
       });
+    },
+    closeAllDetails() {
+      const tree = this.$el.querySelector(".tree");
+      tree
+        .querySelectorAll("details")
+        .forEach(details => (details.open = false));
     }
   }
 };
@@ -70,16 +92,21 @@ export default {
   width: 60%;
 }
 
-.tree {
+div#left {
   overflow-x: scroll;
   overflow-y: scroll;
   height: 90vh;
 }
 
-textarea {
+span.closer {
+  cursor: pointer;
+  background-color: lightgray;
+}
+
+#container {
   width: 100%;
-  overflow-y: scroll;
   height: 90vh;
+  border: 1px solid #ccc;
 }
 
 .split,

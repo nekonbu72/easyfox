@@ -2,9 +2,10 @@ import Split from "split.js";
 
 /**
  *
- * @param {HTMLElement} root
+ * @param {Element} root
  * @param {string} leftSelector
  * @param {string} rightSelector
+ * @returns {Split.Instance}
  */
 export const mySplit = (root, leftSelector, rightSelector) => {
   /**
@@ -34,4 +35,6 @@ export const mySplit = (root, leftSelector, rightSelector) => {
     split.setSizes([leftRatio, 100 - leftRatio]);
     leftWidth = left.clientWidth;
   };
+
+  return split;
 };

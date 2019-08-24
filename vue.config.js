@@ -1,3 +1,5 @@
+const MonacoWebpackPlugin = require("monaco-editor-webpack-plugin");
+
 module.exports = {
   publicPath: "",
   outputDir: "addon/dist",
@@ -9,5 +11,7 @@ module.exports = {
       config.mode = "development";
       config.devtool = "source-map";
     }
+
+    config.plugins.push(new MonacoWebpackPlugin());
   }
 };

@@ -16,7 +16,7 @@ import Path from "path";
 export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
   if (depth > limit) {
     // throw new Error("OverLimitError");
-    return [newErrorDirNode("OverLimitError")];
+    return [newErrorDirNode("OverLimitDepthError")];
   }
 
   let blob;
@@ -63,7 +63,7 @@ export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
       );
 
       if (nodes.length == 0) {
-        resolve([newErrorDirNode("NoFileError")]);
+        resolve([newErrorDirNode("NoAvailableFilesExistError")]);
       }
 
       resolve(nodes);
@@ -164,77 +164,11 @@ const createExtFilter = exts => {
 };
 
 /**
- * @param {HTMLDivElement} div
- * @param {DirNode[]} dirNodes
- * @returns {void}
- */
-export const createTreeView = (div, dirNodes) => {
-  // 子要素を全削除
-  while (div.firstChild) div.removeChild(div.firstChild);
-
-  // トグルをすべて閉じるボタンを作成
-  const closer = document.createElement("span");
-  closer.onclick = () => {
-    const detailses = div.querySelectorAll("details");
-    detailses.forEach(details => (details.open = false));
-  };
-  // enter 入力で閉じられるように
-  closer.onkeyup = e => {
-    if (e.keyCode === 13) {
-      closer.click();
-    }
-  };
-  closer.setAttribute("class", "closer");
-  closer.setAttribute("tabindex", "0");
-  closer.textContent = "  [-] ";
-  div.append(closer);
-
-  div.append(createUl(dirNodes));
-};
-
-/**
- * @param {DirNode[]} dirNodes
- * @returns {HTMLUListElement}
- */
-const createUl = dirNodes => {
-  const ul = document.createElement("ul");
-
-  dirNodes.forEach(node => {
-    const li = document.createElement("li");
-    if (node.isDirectory) {
-      appendDirectory(li, node);
-    } else {
-      li.textContent = node.filename;
-      li.setAttribute("class", "file");
-      li.setAttribute("tabindex", "0");
-    }
-    ul.append(li);
-  });
-  return ul;
-};
-
-/**
- * @param {HTMLLIElement} li
- * @param {DirNode} dir
- * @returns {void}
- */
-const appendDirectory = (li, dir) => {
-  const details = document.createElement("details");
-
-  const summary = document.createElement("summary");
-  summary.textContent = dir.filename;
-  summary.setAttribute("tabindex", "0");
-
-  details.append(summary, createUl(dir.children));
-  li.append(details);
-};
-
-/**
  *
  * @param {string} path
  * @return {Promise<string>}
  */
-const readFile = async path => {
+export const readFile = async path => {
   let blob;
   try {
     const res = await fetch(path, { mode: "same-origin" });
@@ -254,26 +188,5 @@ const readFile = async path => {
       resolve(decodeURIComponent(String(reader.result)));
     };
     reader.readAsText(blob);
-  });
-};
-
-/**
- *
- * @param {HTMLDivElement} div
- * @param {HTMLTextAreaElement} resultTextarea
- * @param {string} rootPath
- * @returns {void}
- */
-export const addFileOpener = (div, resultTextarea, rootPath) => {
-  div.querySelectorAll("li.file").forEach(li => {
-    if (!(li instanceof HTMLLIElement)) return;
-
-    if (li.textContent === "") return;
-
-    li.onclick = async () => {
-      const path = `${rootPath}\\${li.textContent}`;
-      const result = await readFile(path);
-      resultTextarea.value = result;
-    };
   });
 };
