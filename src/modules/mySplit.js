@@ -24,6 +24,8 @@ export const mySplit = (root, leftSelector, rightSelector) => {
     gutterSize: 3,
     onDragEnd: () => {
       leftWidth = left.clientWidth;
+      const event = new Event("gutterMoved");
+      root.dispatchEvent(event);
     }
   });
 

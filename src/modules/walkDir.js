@@ -7,13 +7,13 @@ import Path from "path";
 // https://codepen.io/Anveio/pen/XzYBzX
 
 /**
- * @param   {string} path
+ * @param   {string} url
  * @param   {string[]} extFilter
  * @param   {number} limit
  * @param   {number} depth
  * @returns {Promise<DirNode[]>}
  */
-export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
+export const walkDir = async (url, extFilter, limit = 3, depth = 0) => {
   if (depth > limit) {
     // throw new Error("OverLimitError");
     return [newErrorDirNode("OverLimitDepthError")];
@@ -22,7 +22,7 @@ export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
   let blob;
   try {
     // manifest.json に "permissions": ["<all_urls>"] 必要
-    const res = await fetch(path, { mode: "same-origin" });
+    const res = await fetch(url, { mode: "same-origin" });
     blob = await res.blob();
   } catch (e) {
     // throw e;
@@ -45,14 +45,14 @@ export const walkDir = async (path, extFilter, limit = 3, depth = 0) => {
       const nodes = await Promise.all(
         readerResultArr
           .map(info => info.split(" ").map(data => decodeURIComponent(data)))
-          .map(infoArr => new DirNode(...infoArr.slice(0, -1), depth, path))
+          .map(infoArr => new DirNode(...infoArr.slice(0, -1), depth, url))
           .filter(createExtFilter(extFilter))
           .map(async node => {
             // require-atomic-updates 回避
             const tmpNode = node;
             if (tmpNode.isDirectory) {
               tmpNode.children = await walkDir(
-                tmpNode.path,
+                tmpNode.url,
                 extFilter,
                 limit,
                 depth + 1
@@ -81,7 +81,7 @@ export class DirNode {
    * @param  {string} lastModified
    * @param  {string} fileType
    * @param  {number} depth
-   * @param  {string} parentPath
+   * @param  {string} parentURL
    */
   constructor(
     status,
@@ -90,7 +90,7 @@ export class DirNode {
     lastModified,
     fileType,
     depth,
-    parentPath
+    parentURL
   ) {
     this.status = status;
     this.filename = filename;
@@ -98,7 +98,7 @@ export class DirNode {
     this.lastModified = lastModified;
     this.fileType = fileType;
     this.depth = depth;
-    this.parentPath = parentPath;
+    this.parentURL = parentURL;
 
     /**
      * @type {DirNode[]}
@@ -109,16 +109,24 @@ export class DirNode {
      * @type {boolean}
      */
     this.isDirectory = null;
-    if (this.fileType !== null) {
+    if (this.fileType) {
       this.isDirectory = this.fileType === "DIRECTORY";
     }
 
     /**
      * @type {string}
      */
-    this.path = null;
-    if (this.filename && this.parentPath) {
-      this.path = Path.join(parentPath, filename);
+    this.url = null;
+    if (this.filename && this.parentURL) {
+      this.url = Path.join(parentURL, filename);
+    }
+
+    /**
+     * @type {string}
+     */
+    this.localPath = null;
+    if (this.url) {
+      this.localPath = this.url.replace("file:/", "");
     }
   }
 }
@@ -165,13 +173,13 @@ const createExtFilter = exts => {
 
 /**
  *
- * @param {string} path
+ * @param {string} url
  * @return {Promise<string>}
  */
-export const readFile = async path => {
+export const readFile = async url => {
   let blob;
   try {
-    const res = await fetch(path, { mode: "same-origin" });
+    const res = await fetch(url, { mode: "same-origin" });
     blob = await res.blob();
   } catch (e) {
     return String(e);

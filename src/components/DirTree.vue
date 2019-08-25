@@ -1,28 +1,29 @@
 <template>
   <ul>
-    <li v-for="(dir, index) in directories" :key="`first-${index}`">
+    <li v-for="(directory, index) in directories" :key="`first-${index}`">
       <details>
-        <summary tabindex="0">{{ dir.filename }}</summary>
-        <DirTree :nodes="dir.children" :editor="editor" />
+        <summary @click="updatePath(directory.localPath)" tabindex="0">{{ directory.filename }}</summary>
+        <DirTree @updatePath="updatePath" :nodes="directory.children" :editor="editor" />
       </details>
     </li>
     <li
       tabindex="0"
       v-for="(file, index) in files"
       :key="`second-${index}`"
-      @click="opneFile(file.path)"
+      @click="openFile(file)"
     >{{ file.filename }}</li>
   </ul>
 </template>
 
 <script>
-import { readFile } from "../modules/walkDir";
+import { readFile, DirNode } from "../modules/walkDir";
 
 export default {
   name: "DirTree",
   props: {
     nodes: Array,
-    editor: Object
+    editor: Object,
+    pathInputEl: HTMLInputElement
   },
   computed: {
     directories() {
@@ -38,12 +39,19 @@ export default {
   },
   methods: {
     /**
-     * @param{string}path
+     * @param{DirNode}fileNode
      */
-    opneFile(path) {
-      readFile(path).then(result => {
+    openFile(fileNode) {
+      readFile(fileNode.url).then(result => {
         this.editor.setValue(result);
+        this.$emit("updatePath", fileNode.localPath);
       });
+    },
+    /**
+     * @param{string}newPath
+     */
+    updatePath(newPath) {
+      this.$emit("updatePath", newPath);
     }
   }
 };

@@ -1,30 +1,34 @@
 <template>
-  <form v-on:submit.prevent="updateDirTree">
-    <label>file:/</label>
-    <input class="dir" type="text" v-model="dir" required />
-    <input type="submit" value="->" />
-    <label>{{status}}</label>
+  <div>
+    <form v-on:submit.prevent="updateDirTree">
+      <label>file:/</label>
+      <input class="path" type="text" v-model="path" required />
+      <input type="submit" value="->" />
+      <label>{{status}}</label>
+      <button @click="download">download</button>
+    </form>
+
     <p></p>
     <div class="wrapper">
       <div class="split" id="left">
         <span class="closer" tabindex="0" @click="closeAllDetails" @keyup="closeAllDetails">[-]</span>
-        <DirTree class="tree" :nodes="nodes" :editor="editor" />
+        <DirTree @updatePath="updatePath" class="tree" :nodes="nodes" :editor="editor" />
       </div>
       <div class="split" id="right">
         <div id="container"></div>
       </div>
     </div>
-  </form>
+  </div>
 </template>
 
 <script>
 //@ts-check
 
 import DirTree from "./components/DirTree.vue";
-import { mySplit } from "./modules/mySplit";
 import { walkDir, DirNode } from "./modules/walkDir";
-import Path from "path";
+import Split from "split.js";
 import * as monaco from "monaco-editor";
+import Path from "path";
 
 export default {
   name: "app",
@@ -33,7 +37,7 @@ export default {
   },
   data() {
     return {
-      dir: "C:\\easyfox_test",
+      path: "C:\\easyfox_test",
       status: "Waiting...",
       nodes: [new DirNode()],
       /**
@@ -47,23 +51,55 @@ export default {
       return ["js", "txt", "iim"];
     },
     url() {
-      return Path.join("file:", this.dir);
+      return Path.join("file:", this.path);
+    },
+    gutterMovedEventType() {
+      return "gutterMoved";
     }
   },
   mounted() {
-    const split = mySplit(this.$el, "div#left", "div#right");
+    this.initializeSplitter();
 
-    this.editor = monaco.editor.create(document.getElementById("container"), {
-      language: "javascript",
-      minimap: { enabled: false }
-    });
-    window.onresize = () => {
-      this.editor.layout();
-    };
+    this.initializeEditor();
 
     this.updateDirTree();
   },
   methods: {
+    initializeSplitter() {
+      const left = this.$el.querySelector("div#left"),
+        right = this.$el.querySelector("div#right");
+
+      const split = Split([left, right], {
+        sizes: [25, 75],
+        minSize: [100, 300],
+        gutterSize: 3,
+        onDragEnd: () => {
+          leftWidth = left.clientWidth;
+          this.$el.dispatchEvent(new Event(this.gutterMovedEventType));
+        }
+      });
+
+      let leftWidth = left.clientWidth;
+      window.onresize = () => {
+        const leftRatio = Math.round(
+          (leftWidth / (left.clientWidth + right.clientWidth)) * 100
+        );
+        split.setSizes([leftRatio, 100 - leftRatio]);
+        leftWidth = left.clientWidth;
+      };
+    },
+    initializeEditor() {
+      this.editor = monaco.editor.create(document.getElementById("container"), {
+        language: "javascript",
+        minimap: { enabled: false }
+      });
+      window.onresize = () => {
+        this.editor.layout();
+      };
+      this.$el.addEventListener(this.gutterMovedEventType, () => {
+        this.editor.layout();
+      });
+    },
     updateDirTree() {
       // タイマーをスタート
       const timer1 = new Date();
@@ -82,13 +118,29 @@ export default {
       tree
         .querySelectorAll("details")
         .forEach(details => (details.open = false));
+    },
+    /**
+     * @param{string}newPath
+     */
+    updatePath(newPath) {
+      this.path = newPath;
+    },
+    download() {
+      var csv = "foo,bar,baz";
+      var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+
+      browser.downloads.download({
+        url: URL.createObjectURL(blob),
+        filename: "file.csv",
+        saveAs: false
+      });
     }
   }
 };
 </script>
 
 <style>
-.dir {
+.path {
   width: 60%;
 }
 
