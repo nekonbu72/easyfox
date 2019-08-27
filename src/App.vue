@@ -58,14 +58,14 @@ export default {
     }
   },
   mounted() {
-    this.initializeSplitter();
+    this.initSplitter();
 
-    this.initializeEditor();
+    this.initEditor();
 
     this.updateDirTree();
   },
   methods: {
-    initializeSplitter() {
+    initSplitter() {
       const left = this.$el.querySelector("div#left"),
         right = this.$el.querySelector("div#right");
 
@@ -80,22 +80,22 @@ export default {
       });
 
       let leftWidth = left.clientWidth;
-      window.onresize = () => {
+      window.addEventListener("resize", () => {
         const leftRatio = Math.round(
           (leftWidth / (left.clientWidth + right.clientWidth)) * 100
         );
         split.setSizes([leftRatio, 100 - leftRatio]);
         leftWidth = left.clientWidth;
-      };
+      });
     },
-    initializeEditor() {
+    initEditor() {
       this.editor = monaco.editor.create(document.getElementById("container"), {
         language: "javascript",
         minimap: { enabled: false }
       });
-      window.onresize = () => {
+      window.addEventListener("resize", () => {
         this.editor.layout();
-      };
+      });
       this.$el.addEventListener(this.gutterMovedEventType, () => {
         this.editor.layout();
       });
